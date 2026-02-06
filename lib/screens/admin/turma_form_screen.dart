@@ -25,7 +25,7 @@ class _TurmaFormScreenState extends State<TurmaFormScreen> {
 
   // State variables
   int? _escolaSelecionada;
-  int? _professorSelecionado;
+  List<int> _professoresSelecionados = []; // Alterado para lista de IDs
   bool _isActive = true;
 
   List<dynamic> _escolas = [];
@@ -40,7 +40,14 @@ class _TurmaFormScreenState extends State<TurmaFormScreen> {
       _nomeController.text = widget.turma['nome']?.toString() ?? '';
       _turnoController.text = widget.turma['turno']?.toString() ?? '';
       _escolaSelecionada = widget.turma['escolaId'];
-      _professorSelecionado = widget.turma['professorId'];
+
+      // Suporte para ambos os formatos: professorId (único) e professorIds (múltiplos)
+      if (widget.turma['professorIds'] != null && widget.turma['professorIds'] is List) {
+        _professoresSelecionados = List<int>.from(widget.turma['professorIds']);
+      } else if (widget.turma['professorId'] != null) {
+        _professoresSelecionados = [widget.turma['professorId']];
+      }
+
       _isActive = widget.turma['isActive'] ?? true;
     }
 
@@ -160,30 +167,36 @@ class _TurmaFormScreenState extends State<TurmaFormScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Field: Professor
-                      InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Professor',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.person_outline),
+                      // Field: Professor (Multi-select)
+                      const Text('Professores', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 150,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<int>(
-                            value: _professorSelecionado,
-                            isExpanded: true,
-                            onChanged: (int? newValue) {
-                              setState(() {
-                                _professorSelecionado = newValue;
-                              });
-                            },
-                            items: _professores
-                                .map<DropdownMenuItem<int>>((professor) => DropdownMenuItem(
-                                      value: professor['id'] as int,
-                                      child: Text(professor['username'] as String),
-                                    ))
-                                .toList(),
-                            hint: const Text('Selecione um professor'),
-                          ),
+                        child: ListView.builder(
+                          itemCount: _professores.length,
+                          itemBuilder: (context, index) {
+                            dynamic professor = _professores[index];
+                            bool isSelected = _professoresSelecionados.contains(professor['id']);
+
+                            return CheckboxListTile(
+                              title: Text(professor['username'] as String),
+                              subtitle: Text(professor['email'] as String),
+                              value: isSelected,
+                              onChanged: (bool? value) {
+                                setState(() {
+                                  if (value == true) {
+                                    _professoresSelecionados.add(professor['id']);
+                                  } else {
+                                    _professoresSelecionados.remove(professor['id']);
+                                  }
+                                });
+                              },
+                            );
+                          },
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -208,7 +221,7 @@ class _TurmaFormScreenState extends State<TurmaFormScreen> {
                               'nome': _nomeController.text,
                               'turno': _turnoController.text, // Data from Controller
                               'escolaId': _escolaSelecionada,
-                              'professorId': _professorSelecionado,
+                              'professorIds': _professoresSelecionados, // Enviando lista de IDs
                               'isActive': _isActive,
                             };
 

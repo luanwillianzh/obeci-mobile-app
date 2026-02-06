@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/turma_provider.dart';
+import '../providers/professor_provider.dart';
 import '../models/turma_model.dart';
+import '../models/professor_model.dart';
 
 class TurmasScreen extends StatelessWidget {
   const TurmasScreen({Key? key}) : super(key: key);
@@ -67,6 +69,19 @@ class TurmasScreen extends StatelessWidget {
                                   style: const TextStyle(fontSize: 14),
                                 ),
                                 const SizedBox(height: 4),
+                                // Mostrar os professores associados à turma
+                                if (turma.professorIds.isNotEmpty)
+                                  Wrap(
+                                    spacing: 4.0,
+                                    runSpacing: 2.0,
+                                    children: [
+                                      const Text('Professores:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                                      ...turma.professorIds.map((id) => Text(' #$id', style: const TextStyle(fontSize: 12))).toList(),
+                                    ],
+                                  )
+                                else
+                                  const Text('Nenhum professor associado', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                const SizedBox(height: 4),
                                 Text(
                                   'Ativa: ${turma.isActive ? 'Sim' : 'Não'}',
                                   style: const TextStyle(fontSize: 14),
@@ -125,35 +140,84 @@ class TurmasScreen extends StatelessWidget {
     final TextEditingController turnoController = TextEditingController(text: turma?.turno);
     bool isActive = turma?.isActive ?? true;
 
+    // Carregar os IDs dos professores existentes
+    List<int> selectedProfessorIds = turma?.professorIds ?? [];
+
+    // Carregar a lista de professores
+    final professorProvider = Provider.of<ProfessorProvider>(context, listen: false);
+    List<Professor> availableProfessores = professorProvider.professores;
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(turma == null ? 'Adicionar Turma' : 'Editar Turma'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nomeController,
-                decoration: const InputDecoration(labelText: 'Nome'),
-              ),
-              TextField(
-                controller: escolaIdController,
-                decoration: const InputDecoration(labelText: 'ID da Escola'),
-                keyboardType: TextInputType.number,
-              ),
-              TextField(
-                controller: turnoController,
-                decoration: const InputDecoration(labelText: 'Turno'),
-              ),
-              SwitchListTile(
-                title: const Text('Ativa'),
-                value: isActive,
-                onChanged: (bool value) {
-                  isActive = value;
-                },
-              ),
-            ],
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nomeController,
+                      decoration: const InputDecoration(labelText: 'Nome'),
+                    ),
+                    TextField(
+                      controller: escolaIdController,
+                      decoration: const InputDecoration(labelText: 'ID da Escola'),
+                      keyboardType: TextInputType.number,
+                    ),
+                    TextField(
+                      controller: turnoController,
+                      decoration: const InputDecoration(labelText: 'Turno'),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Professores associados:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 150,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: ListView.builder(
+                        itemCount: availableProfessores.length,
+                        itemBuilder: (context, index) {
+                          Professor professor = availableProfessores[index];
+                          bool isSelected = selectedProfessorIds.contains(professor.id);
+
+                          return CheckboxListTile(
+                            title: Text(professor.username),
+                            subtitle: Text(professor.email),
+                            value: isSelected,
+                            onChanged: (bool? value) {
+                              setState(() {
+                                if (value == true) {
+                                  selectedProfessorIds.add(professor.id);
+                                } else {
+                                  selectedProfessorIds.remove(professor.id);
+                                }
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SwitchListTile(
+                      title: const Text('Ativa'),
+                      value: isActive,
+                      onChanged: (bool value) {
+                        setState(() {
+                          isActive = value;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
           actions: [
             TextButton(
@@ -169,19 +233,21 @@ class TurmasScreen extends StatelessWidget {
                   final turmaProvider = Provider.of<TurmaProvider>(context, listen: false);
 
                   if (turma == null) {
-                    // Add new turma without showing professor ID
-                    await turmaProvider.createTurmaWithoutProfessor(
+                    // Add new turma with selected professors
+                    await turmaProvider.createTurma(
                       nomeController.text,
                       int.parse(escolaIdController.text),
+                      selectedProfessorIds,
                       turnoController.text,
                       isActive
                     );
                   } else {
-                    // Update existing turma without changing professor ID
-                    await turmaProvider.updateTurmaWithoutProfessor(
+                    // Update existing turma with selected professors
+                    await turmaProvider.updateTurma(
                       turma.id,
                       nomeController.text,
                       int.parse(escolaIdController.text),
+                      selectedProfessorIds,
                       turnoController.text,
                       isActive
                     );

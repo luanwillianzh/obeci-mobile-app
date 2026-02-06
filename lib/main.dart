@@ -11,6 +11,7 @@ import 'providers/turma_provider.dart';
 import 'providers/escola_provider.dart';
 import 'providers/lembrete_provider.dart';
 import 'providers/slide_provider.dart';
+import 'providers/professor_provider.dart';
 
 void main() {
   runApp(const OBECIMobileApp());
@@ -28,6 +29,7 @@ class OBECIMobileApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => EscolaProvider()),
         ChangeNotifierProvider(create: (_) => LembreteProvider()),
         ChangeNotifierProvider(create: (_) => SlideProvider()),
+        ChangeNotifierProvider(create: (_) => ProfessorProvider()),
       ],
       child: MaterialApp(
         title: 'OBECI Mobile',

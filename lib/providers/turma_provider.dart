@@ -26,7 +26,7 @@ class TurmaProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> createTurma(String nome, int escolaId, int professorId, String turno, bool isActive) async {
+  Future<bool> createTurma(String nome, int escolaId, List<int> professorIds, String turno, bool isActive) async {
     _isLoading = true;
     notifyListeners();
 
@@ -34,7 +34,7 @@ class TurmaProvider with ChangeNotifier {
       final turmaData = {
         'nome': nome,
         'escolaId': escolaId,
-        'professorId': professorId,
+        'professorIds': professorIds,
         'turno': turno,
         'isActive': isActive,
       };
@@ -55,11 +55,15 @@ class TurmaProvider with ChangeNotifier {
     return false;
   }
 
-  Future<bool> createTurmaWithoutProfessor(String nome, int escolaId, String turno, bool isActive, {int defaultProfessorId = 0}) async {
-    return createTurma(nome, escolaId, defaultProfessorId, turno, isActive);
+  Future<bool> createTurmaWithSingleProfessor(String nome, int escolaId, int professorId, String turno, bool isActive) async {
+    return createTurma(nome, escolaId, [professorId], turno, isActive);
   }
 
-  Future<bool> updateTurma(int id, String nome, int escolaId, int professorId, String turno, bool isActive) async {
+  Future<bool> createTurmaWithoutProfessor(String nome, int escolaId, String turno, bool isActive, {int defaultProfessorId = 0}) async {
+    return createTurmaWithSingleProfessor(nome, escolaId, defaultProfessorId, turno, isActive);
+  }
+
+  Future<bool> updateTurma(int id, String nome, int escolaId, List<int> professorIds, String turno, bool isActive) async {
     _isLoading = true;
     notifyListeners();
 
@@ -67,7 +71,7 @@ class TurmaProvider with ChangeNotifier {
       final turmaData = {
         'nome': nome,
         'escolaId': escolaId,
-        'professorId': professorId,
+        'professorIds': professorIds,
         'turno': turno,
         'isActive': isActive,
       };
@@ -88,10 +92,14 @@ class TurmaProvider with ChangeNotifier {
     return false;
   }
 
+  Future<bool> updateTurmaWithSingleProfessor(int id, String nome, int escolaId, int professorId, String turno, bool isActive) async {
+    return updateTurma(id, nome, escolaId, [professorId], turno, isActive);
+  }
+
   Future<bool> updateTurmaWithoutProfessor(int id, String nome, int escolaId, String turno, bool isActive) async {
-    // Fetch current turma to get the existing professorId
+    // Fetch current turma to get the existing professorIds
     final currentTurma = _turmas.firstWhere((t) => t.id == id, orElse: () => _turmas[0]);
-    return updateTurma(id, nome, escolaId, currentTurma.professorId, turno, isActive);
+    return updateTurma(id, nome, escolaId, currentTurma.professorIds, turno, isActive);
   }
 
   Future<bool> deleteTurma(int id) async {

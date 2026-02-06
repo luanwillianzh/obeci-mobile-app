@@ -171,7 +171,14 @@ class ApiService {
 
   Future<Map<String, dynamic>> createTurma(Map<String, dynamic> turmaData) async {
     try {
-      final response = await _dio.post('/api/turmas', data: turmaData);
+      // Converter formato antigo (professorId) para novo (professorIds) se necessário
+      Map<String, dynamic> requestData = Map.from(turmaData);
+      if (requestData.containsKey('professorId') && !requestData.containsKey('professorIds')) {
+        requestData['professorIds'] = [requestData['professorId']];
+        requestData.remove('professorId');
+      }
+
+      final response = await _dio.post('/api/turmas', data: requestData);
       if (response.statusCode! >= 200 && response.statusCode! < 300) {
         return response.data;
       } else {
@@ -186,7 +193,14 @@ class ApiService {
 
   Future<Map<String, dynamic>> updateTurma(int id, Map<String, dynamic> turmaData) async {
     try {
-      final response = await _dio.put('/api/turmas/$id', data: turmaData);
+      // Converter formato antigo (professorId) para novo (professorIds) se necessário
+      Map<String, dynamic> requestData = Map.from(turmaData);
+      if (requestData.containsKey('professorId') && !requestData.containsKey('professorIds')) {
+        requestData['professorIds'] = [requestData['professorId']];
+        requestData.remove('professorId');
+      }
+
+      final response = await _dio.put('/api/turmas/$id', data: requestData);
       if (response.statusCode! >= 200 && response.statusCode! < 300) {
         return response.data;
       } else {

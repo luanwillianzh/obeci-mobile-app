@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/turma_provider.dart';
 import '../providers/escola_provider.dart';
-import 'slide_webview_screen.dart';
+import '../providers/professor_provider.dart';
+import '../models/turma_model.dart';
+import '../models/escola_model.dart';
+import '../models/professor_model.dart';
 
-class TurmasListScreen extends StatefulWidget {
-  const TurmasListScreen({Key? key}) : super(key: key);
+class TurmasProfessoresScreen extends StatefulWidget {
+  const TurmasProfessoresScreen({Key? key}) : super(key: key);
 
   @override
-  _TurmasListScreenState createState() => _TurmasListScreenState();
+  _TurmasProfessoresScreenState createState() => _TurmasProfessoresScreenState();
 }
 
-class _TurmasListScreenState extends State<TurmasListScreen> {
+class _TurmasProfessoresScreenState extends State<TurmasProfessoresScreen> {
   @override
   void initState() {
     super.initState();
@@ -23,10 +26,12 @@ class _TurmasListScreenState extends State<TurmasListScreen> {
   Future<void> _loadInitialData() async {
     final turmaProvider = Provider.of<TurmaProvider>(context, listen: false);
     final escolaProvider = Provider.of<EscolaProvider>(context, listen: false);
+    final professorProvider = Provider.of<ProfessorProvider>(context, listen: false);
 
     await Future.wait([
       turmaProvider.fetchTurmas(),
       escolaProvider.fetchEscolas(),
+      professorProvider.fetchProfessores(),
     ]);
   }
 
@@ -34,9 +39,10 @@ class _TurmasListScreenState extends State<TurmasListScreen> {
   Widget build(BuildContext context) {
     final turmaProvider = Provider.of<TurmaProvider>(context);
     final escolaProvider = Provider.of<EscolaProvider>(context);
+    final professorProvider = Provider.of<ProfessorProvider>(context);
 
     // Group turmas by escola
-    Map<int, List<dynamic>> turmasPorEscola = {};
+    Map<int, List<Turma>> turmasPorEscola = {};
     for (var turma in turmaProvider.turmas) {
       if (!turmasPorEscola.containsKey(turma.escolaId)) {
         turmasPorEscola[turma.escolaId] = [];
@@ -52,7 +58,7 @@ class _TurmasListScreenState extends State<TurmasListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Minhas Turmas'),
+        title: const Text('Turmas e Professores'),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Theme.of(context).colorScheme.onPrimary,
       ),
@@ -61,7 +67,7 @@ class _TurmasListScreenState extends State<TurmasListScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (turmaProvider.isLoading || escolaProvider.isLoading)
+            if (turmaProvider.isLoading || escolaProvider.isLoading || professorProvider.isLoading)
               const LinearProgressIndicator()
             else if (turmaProvider.turmas.isEmpty)
               Expanded(
@@ -81,7 +87,7 @@ class _TurmasListScreenState extends State<TurmasListScreen> {
                   children: turmasPorEscola.entries.map((entry) {
                     final escolaId = entry.key;
                     final turmas = entry.value;
-                    
+
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -109,66 +115,63 @@ class _TurmasListScreenState extends State<TurmasListScreen> {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           children: turmas.map((turma) {
+                            // Obter os nomes dos professores associados à turma
+                            List<Professor> professoresDaTurma = professorProvider.getProfessoresByIds(turma.professorIds);
+                            
                             return Card(
                               margin: const EdgeInsets.only(bottom: 12),
                               elevation: 2,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(4),
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => SlideWebViewScreen(
-                                        turmaId: turma.id,
-                                        turmaNome: turma.nome,
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      turma.nome,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
                                       ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                  );
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        turma.nome,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Turno: ${turma.turno}',
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    // Mostrar os professores associados à turma
+                                    if (professoresDaTurma.isNotEmpty)
+                                      Wrap(
+                                        spacing: 8.0,
+                                        runSpacing: 4.0,
+                                        children: professoresDaTurma.map((professor) {
+                                          return Chip(
+                                            label: Text(
+                                              professor.username,
+                                              style: const TextStyle(fontSize: 12),
+                                            ),
+                                            backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                                          );
+                                        }).toList(),
+                                      )
+                                    else
+                                      const Text(
+                                        'Nenhum professor associado',
+                                        style: TextStyle(fontSize: 12, color: Colors.grey),
                                       ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'Turno: ${turma.turno}',
-                                        style: const TextStyle(fontSize: 14),
+                                    const SizedBox(height: 8),
+                                    Chip(
+                                      label: Text(
+                                        turma.isActive ? 'Ativa' : 'Inativa',
+                                        style: const TextStyle(fontSize: 12),
                                       ),
-                                      const SizedBox(height: 8),
-                                      // Mostrar os professores associados à turma
-                                      if (turma.professorIds.isNotEmpty)
-                                        Wrap(
-                                          spacing: 4.0,
-                                          runSpacing: 2.0,
-                                          children: [
-                                            const Text('Professores:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-                                            ...turma.professorIds.map((id) => Text(' #$id', style: const TextStyle(fontSize: 12))).toList(),
-                                          ],
-                                        )
-                                      else
-                                        const Text('Nenhum professor associado', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                                      const SizedBox(height: 8),
-                                      Chip(
-                                        label: Text(
-                                          turma.isActive ? 'Ativa' : 'Inativa',
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                        backgroundColor: turma.isActive
-                                            ? Theme.of(context).colorScheme.primary.withOpacity(0.2)
-                                            : Theme.of(context).colorScheme.error.withOpacity(0.2),
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      ),
-                                    ],
-                                  ),
+                                      backgroundColor: turma.isActive
+                                          ? Theme.of(context).colorScheme.primary.withOpacity(0.2)
+                                          : Theme.of(context).colorScheme.error.withOpacity(0.2),
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    ),
+                                  ],
                                 ),
                               ),
                             );
